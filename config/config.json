@@ -1,7 +1,7 @@
 {
   "development": {
-    "username": "kanglerian",
-    "password": "kanglerian",
+    "username": "root",
+    "password": "lp3itasik",
     "database": "jsonwebtoken_db",
     "host": "127.0.0.1",
     "dialect": "mysql"
