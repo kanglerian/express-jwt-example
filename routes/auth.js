@@ -20,15 +20,20 @@ router.post('/login', async (req, res) => {
         email: req.body.email
       }
     });
-  
+
     const token = jwt.sign({ data: user }, JWT_SECRET, { expiresIn: JWT_ACCESS_TOKEN_EXPIRED });
     const refreshToken = jwt.sign({ data: user }, JWT_SECRET_REFRESH_TOKEN, { expiresIn: JWT_REFRESH_TOKEN_EXPIRED });
-  
+
     await RefreshToken.create({
       user_id: user.id,
       token: refreshToken
     });
-  
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: true,
+    });
+
     return res.status(200).json({
       status: 'success',
       data: {
@@ -52,12 +57,11 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/token', async (req, res) => {
+router.get('/token', async (req, res) => {
   try {
-    const refreshToken = req.body.refresh_token;
-    const email = req.body.email;
+    const refreshToken = req.cookies.refreshToken;
 
-    if(!refreshToken || !email){
+    if (!refreshToken) {
       return res.status(400).json({
         status: 'error',
         message: 'invalid token'
@@ -70,24 +74,18 @@ router.post('/token', async (req, res) => {
       }
     });
 
-    if(!refresh){
+    if (!refresh) {
       return res.status(400).json({
         status: 'error'
       });
     }
 
     jwt.verify(refreshToken, JWT_SECRET_REFRESH_TOKEN, (err, decoded) => {
-      if(err){
+      if (err) {
+        res.clearCookie('refreshToken');
         return res.status(403).json({
           status: 'error',
           message: err.message
-        });
-      }
-
-      if(email !== decoded.data.email){
-        return res.status(400).json({
-          status: 'error',
-          message: 'email is not valid'
         });
       }
 
@@ -104,12 +102,13 @@ router.post('/token', async (req, res) => {
   }
 })
 
-router.post('/logout', verifyToken, async (req, res) => {
-  await RefreshToken.destroy({
-    where: {
-      user_id: req.user.data.id
-    }
-  })
+router.delete('/logout', verifyToken, async (req, res) => {
+  // await RefreshToken.destroy({
+  //   where: {
+  //     user_id: req.user.data.id
+  //   }
+  // })
+  res.clearCookie('refreshToken');
   return res.status(200).json({
     status: 'success',
     message: 'Berhasil keluar!'
